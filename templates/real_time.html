@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Phishing Detection</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --danger-color: #f72585;
+            --success-color: #4cc9f0;
+            --warning-color: #f8961e;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .navbar {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .navbar-brand {
+            font-weight: 600;
+            color: white !important;
+        }
+        
+        .main-container {
+            flex: 1;
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .header h1 {
+            font-weight: 700;
+            color: var(--dark-color);
+            position: relative;
+            display: inline-block;
+        }
+        
+        .header h1::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--success-color));
+            border-radius: 2px;
+        }
+        
+        .controls-card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            margin-bottom: 2rem;
+            background: white;
+        }
+        
+        .results-container {
+            border-radius: 15px;
+            background: white;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            padding: 0;
+            overflow: hidden;
+        }
+        
+        #outputs {
+            height: 500px;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .url-card {
+            border-left: 4px solid var(--primary-color);
+            border-radius: 8px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .url-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .url-card.phishing {
+            border-left-color: var(--danger-color);
+        }
+        
+        .url-card.genuine {
+            border-left-color: var(--success-color);
+        }
+        
+        .badge-phishing {
+            background-color: var(--danger-color);
+        }
+        
+        .badge-genuine {
+            background-color: var(--success-color);
+        }
+        
+        .badge-processing {
+            background-color: var(--warning-color);
+        }
+        
+        .url-text {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            word-break: break-all;
+        }
+        
+        .progress-thin {
+            height: 6px;
+        }
+        
+        footer {
+            background-color: var(--dark-color);
+            color: white;
+            padding: 1.5rem 0;
+            margin-top: auto;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border: none;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+        }
+        
+        /* Custom scrollbar */
+        #outputs::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        #outputs::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        #outputs::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 10px;
+        }
+        
+        #outputs::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        
+        /* Animation for new entries */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-shield-alt me-2"></i>PhishShield
+            </a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/"><i class="fas fa-home me-1"></i> Home</a>
+                <a class="nav-link active" href="/detect"><i class="fas fa-bolt me-1"></i> Real-time Detection</a>
+                <a class="nav-link" href="/map"><i class="fas fa-map-marker-alt me-1"></i> Police Locator</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-container">
+        <div class="container">
+            <div class="header">
+                <h1>Real-time Phishing Detection</h1>
+                <p class="text-muted">Monitoring live phishing URLs from multiple threat intelligence sources</p>
+            </div>
+            
+            <!-- Controls Card -->
+            <div class="controls-card p-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8 mb-3 mb-md-0">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-grow-1 me-3">
+                                <label for="urlFilter" class="form-label">Filter Results:</label>
+                                <select id="urlFilter" class="form-select">
+                                    <option value="all">All URLs</option>
+                                    <option value="phishing">Only Phishing URLs</option>
+                                    <option value="genuine">Only Genuine URLs</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <button id="generateReportBtn" class="btn btn-primary">
+                            <i class="fas fa-file-export me-2"></i>Generate Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Error Display -->
+            <div class="alert alert-danger d-none" id="errorAlert"></div>
+            
+            <!-- Results Container -->
+            <div class="results-container">
+                <div class="p-3 border-bottom bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-list me-2"></i>Detection Results
+                        </h5>
+                        <span class="badge bg-secondary" id="resultCount">0 URLs analyzed</span>
+                    </div>
+                </div>
+                <div id="outputs">
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                        <p>Connecting to real-time detection stream...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="text-center">
+                <span>&copy; 2024 PhishShield. All rights reserved.</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let filterOption = 'all';
+        let urlData = [];
+        let resultCount = 0;
+        
+        // Update result count display
+        function updateResultCount() {
+            const countElement = document.getElementById('resultCount');
+            const phishingCount = urlData.filter(item => item.nature === 'phishing').length;
+            const genuineCount = urlData.filter(item => item.nature === 'genuine').length;
+            
+            countElement.textContent = `${resultCount} URLs analyzed (${phishingCount} phishing, ${genuineCount} genuine)`;
+        }
+        
+        // Filter URLs based on selection
+        function filterURLs() {
+            const cards = document.querySelectorAll('#outputs .url-card');
+            cards.forEach(card => {
+                const cardType = card.getAttribute('data-type');
+                
+                if (filterOption === 'all' || 
+                    (filterOption === 'phishing' && cardType === 'phishing') || 
+                    (filterOption === 'genuine' && cardType === 'genuine')) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+        
+        // Event listener for filter change
+        document.getElementById('urlFilter').addEventListener('change', function() {
+            filterOption = this.value;
+            filterURLs();
+        });
+        
+        // EventSource for real-time updates
+        const eventSource = new EventSource('/phishstream');
+        
+        eventSource.onmessage = (event) => {
+            const outputContainer = document.getElementById('outputs');
+            
+            // Remove loading message if it exists
+            if (outputContainer.children.length === 1 && 
+                outputContainer.children[0].classList.contains('text-center')) {
+                outputContainer.innerHTML = '';
+            }
+            
+            const msgText = event.data;
+            let badgeClass = '';
+            let badgeText = '';
+            let urlType = '';
+            let phishingChance = 0;
+            let genuineChance = 0;
+            
+            // Parse the message
+            const parts = msgText.split(" ");
+            const url = parts.slice(3).join(" ").split(" Chance")[0];
+            phishingChance = parseFloat(parts[7].replace("(", "").replace("%", ""));
+            genuineChance = parseFloat(parts[11].replace("(", "").replace("%", ""));
+            
+            // Determine URL type
+            if (parts[2] === "phishing:") {
+                badgeClass = 'badge-phishing';
+                badgeText = 'Phishing Detected';
+                urlType = 'phishing';
+            } else if (parts[2] === "safe:") {
+                badgeClass = 'badge-genuine';
+                badgeText = 'Genuine URL';
+                urlType = 'genuine';
+            }
+            
+            // Create new card element
+            const newCard = document.createElement('div');
+            newCard.className = `url-card ${urlType} p-3 fade-in`;
+            newCard.setAttribute('data-type', urlType);
+            
+            newCard.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="badge ${badgeClass} rounded-pill">${badgeText}</span>
+                    <small class="text-muted">${new Date().toLocaleTimeString()}</small>
+                </div>
+                <p class="url-text mb-3">${url}</p>
+                <div class="d-flex align-items-center mb-2">
+                    <small class="me-2" style="width: 100px;">Phishing: ${phishingChance.toFixed(2)}%</small>
+                    <div class="progress progress-thin flex-grow-1">
+                        <div class="progress-bar bg-danger" role="progressbar" 
+                             style="width: ${phishingChance}%" 
+                             aria-valuenow="${phishingChance}" aria-valuemin="0" aria-valuemax="100">
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <small class="me-2" style="width: 100px;">Genuine: ${genuineChance.toFixed(2)}%</small>
+                    <div class="progress progress-thin flex-grow-1">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: ${genuineChance}%" 
+                             aria-valuenow="${genuineChance}" aria-valuemin="0" aria-valuemax="100">
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            outputContainer.prepend(newCard);
+            
+            // Save URL data for report generation
+            urlData.push({
+                url: url,
+                nature: urlType,
+                phishingChance: phishingChance,
+                genuineChance: genuineChance,
+                timestamp: new Date().toISOString()
+            });
+            
+            resultCount++;
+            updateResultCount();
+            
+            // Apply filter to new card
+            if ((filterOption === 'phishing' && urlType !== 'phishing') || 
+                (filterOption === 'genuine' && urlType !== 'genuine')) {
+                newCard.style.display = 'none';
+            }
+            
+            // Auto-scroll if at bottom
+            scrollToBottomIfNeeded(outputContainer);
+        };
+        
+        // Handle errors
+        eventSource.onerror = (error) => {
+            console.error('EventSource failed:', error);
+            const errorAlert = document.getElementById('errorAlert');
+            errorAlert.classList.remove('d-none');
+            errorAlert.textContent = 'Error connecting to real-time detection service. Trying to reconnect...';
+            
+            // Hide loading message
+            const outputContainer = document.getElementById('outputs');
+            if (outputContainer.children.length === 1 && 
+                outputContainer.children[0].classList.contains('text-center')) {
+                outputContainer.innerHTML = '';
+            }
+        };
+        
+        // Function to scroll to the bottom only if the user is at the bottom
+        function scrollToBottomIfNeeded(container) {
+            const isAtBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 1;
+            if (isAtBottom) {
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+        
+        // Function to generate the report
+        document.getElementById('generateReportBtn').addEventListener('click', function() {
+            if (urlData.length === 0) {
+                alert('No data available to generate report');
+                return;
+            }
+            
+            const currentDate = new Date();
+            const month = currentDate.toLocaleString('en-US', { month: 'short' });
+            const day = String(currentDate.getDate()).padStart(2, '0');
+            const year = currentDate.getFullYear();
+            const time = currentDate.toLocaleTimeString('en-US', { 
+                hour12: false, 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit' 
+            }).replace(/:/g, '');
+            
+            const filename = `phishing_detection_report_${month}_${day}_${year}_${time}.csv`;
+            
+            let csvContent = `Phishing Detection Report - ${month} ${day}, ${year}\n\n`;
+            csvContent += 'Index,URL,Predicted Nature,Phishing Chance (%),Genuine Chance (%),Timestamp\n';
+            
+            urlData.forEach((entry, index) => {
+                csvContent += `${index + 1},"${entry.url}",${entry.nature},${entry.phishingChance.toFixed(2)},${entry.genuineChance.toFixed(2)},${entry.timestamp}\n`;
+            });
+            
+            // Create download link
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            if (link.download !== undefined) {
+                link.setAttribute('href', URL.createObjectURL(blob));
+                link.setAttribute('download', filename);
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        });
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateResultCount();
+        });
+    </script>
+</body>
+</html>

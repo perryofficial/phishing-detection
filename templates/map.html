@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cybercrime Police Station Locator</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --danger-color: #f72585;
+            --success-color: #4cc9f0;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .navbar {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .navbar-brand {
+            font-weight: 600;
+            color: white !important;
+        }
+        
+        .main-container {
+            flex: 1;
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .header h1 {
+            font-weight: 700;
+            color: var(--dark-color);
+            position: relative;
+            display: inline-block;
+        }
+        
+        .header h1::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--success-color));
+            border-radius: 2px;
+        }
+        
+        .search-card {
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            margin-bottom: 2rem;
+        }
+        
+        #map {
+            height: 500px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            z-index: 1;
+        }
+        
+        .station-card {
+            cursor: pointer;
+            transition: all 0.3s;
+            border-left: 4px solid var(--primary-color);
+            margin-bottom: 10px;
+        }
+        
+        .station-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .verified-badge {
+            background-color: var(--success-color);
+        }
+        
+        .unverified-badge {
+            background-color: var(--warning-color);
+            color: var(--dark-color);
+        }
+        
+        .leaflet-marker-icon {
+            filter: hue-rotate(200deg) brightness(1.2);
+        }
+        
+        footer {
+            background-color: var(--dark-color);
+            color: white;
+            padding: 1.5rem 0;
+            margin-top: auto;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border: none;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+        }
+        
+        /* Animation for markers */
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .bounce-marker {
+            animation: bounce 1s infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-shield-alt me-2"></i>PhishShield
+            </a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/"><i class="fas fa-home me-1"></i> Home</a>
+                <a class="nav-link" href="/detect"><i class="fas fa-bolt me-1"></i> Real-time Detection</a>
+                <a class="nav-link active" href="/map"><i class="fas fa-map-marker-alt me-1"></i> Police Locator</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-container">
+        <div class="container">
+            <div class="header">
+                <h1>Cybercrime Police Station Locator</h1>
+                <p class="text-muted">Find verified cybercrime police stations near you</p>
+            </div>
+            
+            <div class="row">
+                <div class="col-lg-5">
+                    <div class="search-card p-4">
+                        <h4 class="mb-4">
+                            <i class="fas fa-search me-2"></i>Search Locations
+                        </h4>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Country</label>
+                            <select id="countrySelect" class="form-select">
+                                <option value="india" selected>India</option>
+                                <option value="usa">United States</option>
+                                <option value="uk">United Kingdom</option>
+                                <option value="canada">Canada</option>
+                                <option value="australia">Australia</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">City</label>
+                            <div class="input-group">
+                                <input type="text" id="cityInput" class="form-control" placeholder="Enter city name">
+                                <button id="searchBtn" class="btn btn-primary">
+                                    <i class="fas fa-search me-1"></i>Search
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button id="locateBtn" class="btn btn-outline-primary">
+                                <i class="fas fa-location-arrow me-1"></i>Use My Location
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="resultsContainer" class="d-none">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4 class="mb-0">
+                                <i class="fas fa-list me-2"></i>Results for 
+                                <span id="locationSpan" class="fw-bold"></span>
+                            </h4>
+                            <span class="badge bg-primary" id="resultCount">0 stations</span>
+                        </div>
+                        
+                        <div id="stationsList" class="list-group"></div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-7">
+                    <div class="position-relative">
+                        <div id="map"></div>
+                        <div class="position-absolute top-0 end-0 mt-3 me-3">
+                            <button id="resetMapBtn" class="btn btn-sm btn-light shadow-sm">
+                                <i class="fas fa-sync-alt me-1"></i>Reset View
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="text-center">
+                <span>&copy; 2024 PhishShield. All rights reserved.</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let map;
+        let markers = [];
+        let currentLocationMarker = null;
+        
+        // Initialize map with India view
+        function initMap() {
+            map = L.map('map').setView([20.5937, 78.9629], 5);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                maxZoom: 18
+            }).addTo(map);
+            
+            // Add scale control
+            L.control.scale().addTo(map);
+        }
+        
+        // Create custom marker icons
+        function createMarkerIcon(type) {
+            return L.divIcon({
+                className: `custom-marker ${type === 'current' ? 'bounce-marker' : ''}`,
+                html: `<div class="marker-pin ${type === 'current' ? 'current-location' : 'station-location'}">
+                         <i class="fas ${type === 'current' ? 'fa-location-arrow' : 'fa-shield-alt'}"></i>
+                      </div>`,
+                iconSize: [30, 42],
+                iconAnchor: [15, 42],
+                popupAnchor: [0, -40]
+            });
+        }
+        
+        // Clear all markers from map
+        function clearMarkers() {
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+        }
+        
+        // Clear current location marker
+        function clearCurrentLocationMarker() {
+            if (currentLocationMarker) {
+                map.removeLayer(currentLocationMarker);
+                currentLocationMarker = null;
+            }
+        }
+        
+        // Display search results
+        function displayResults(data) {
+            // Update location text
+            document.getElementById('locationSpan').textContent = 
+                `${data.city.charAt(0).toUpperCase() + data.city.slice(1)}, ${data.country.toUpperCase()}`;
+            
+            // Clear previous markers and results
+            clearMarkers();
+            clearCurrentLocationMarker();
+            
+            const stationsList = document.getElementById('stationsList');
+            stationsList.innerHTML = '';
+            
+            // Show results container
+            document.getElementById('resultsContainer').classList.remove('d-none');
+            
+            // Update result count
+            document.getElementById('resultCount').textContent = 
+                `${data.stations.length} ${data.stations.length === 1 ? 'station' : 'stations'}`;
+            
+            // Add stations to list and map
+            data.stations.forEach((station, index) => {
+                // Create list item
+                const stationItem = document.createElement('div');
+                stationItem.className = 'list-group-item station-card p-3';
+                stationItem.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="mb-0">${station.name}</h5>
+                        <span class="badge ${station.verified ? 'verified-badge' : 'unverified-badge'}">
+                            ${station.verified ? 'Verified' : 'Unverified'}
+                        </span>
+                    </div>
+                    ${station.address ? `<p class="mb-2 text-muted"><i class="fas fa-map-marker-alt me-2"></i>${station.address}</p>` : ''}
+                    ${station.phone ? `<p class="mb-2"><i class="fas fa-phone me-2"></i>${station.phone}</p>` : ''}
+                    ${station.hours ? `<p class="mb-0"><i class="fas fa-clock me-2"></i>${station.hours}</p>` : ''}
+                `;
+                
+                // Add click handler to center map on station
+                stationItem.addEventListener('click', () => {
+                    map.setView([station.lat, station.lng], 15);
+                    
+                    // Highlight the clicked marker
+                    markers.forEach(m => {
+                        if (m.getLatLng().lat === station.lat && m.getLatLng().lng === station.lng) {
+                            m.openPopup();
+                        }
+                    });
+                });
+                
+                stationsList.appendChild(stationItem);
+                
+                // Add marker to map
+                const marker = L.marker([station.lat, station.lng], {
+                    icon: createMarkerIcon('station')
+                }).addTo(map).bindPopup(`
+                    <div class="station-popup">
+                        <h6>${station.name}</h6>
+                        ${station.address ? `<p class="mb-1"><i class="fas fa-map-marker-alt"></i> ${station.address}</p>` : ''}
+                        ${station.phone ? `<p class="mb-1"><i class="fas fa-phone"></i> ${station.phone}</p>` : ''}
+                        ${station.hours ? `<p class="mb-1"><i class="fas fa-clock"></i> ${station.hours}</p>` : ''}
+                        <p class="text-muted mt-1"><small>Source: ${station.source || 'Verified database'}</small></p>
+                    </div>
+                `);
+                
+                markers.push(marker);
+            });
+            
+            // Fit map to show all markers
+            if (markers.length > 0) {
+                const markerGroup = new L.featureGroup(markers);
+                map.fitBounds(markerGroup.getBounds().pad(0.1));
+            }
+        }
+        
+        // Search by city
+        document.getElementById('searchBtn').addEventListener('click', async () => {
+            const city = document.getElementById('cityInput').value.trim();
+            const country = document.getElementById('countrySelect').value;
+            
+            if (!city) {
+                alert('Please enter a city name');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/search-stations?city=${encodeURIComponent(city)}&country=${country}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                displayResults(data);
+            } catch (error) {
+                console.error('Error:', error);
+                alert(`Error: ${error.message}`);
+            }
+        });
+        
+        // Use current location
+        document.getElementById('locateBtn').addEventListener('click', () => {
+            if (navigator.geolocation) {
+                document.getElementById('locateBtn').disabled = true;
+                document.getElementById('locateBtn').innerHTML = 
+                    '<i class="fas fa-spinner fa-spin me-1"></i>Locating...';
+                
+                navigator.geolocation.getCurrentPosition(
+                    async (position) => {
+                        try {
+                            clearCurrentLocationMarker();
+                            
+                            // Add marker for current location
+                            currentLocationMarker = L.marker(
+                                [position.coords.latitude, position.coords.longitude], 
+                                {
+                                    icon: createMarkerIcon('current')
+                                }
+                            ).addTo(map).bindPopup('Your current location');
+                            
+                            // Reverse geocode to get city name
+                            const response = await fetch(
+                                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}`
+                            );
+                            const locationData = await response.json();
+                            
+                            const city = locationData.address.city || 
+                                        locationData.address.town || 
+                                        locationData.address.village;
+                            
+                            if (city) {
+                                document.getElementById('cityInput').value = city;
+                                document.getElementById('searchBtn').click();
+                            } else {
+                                alert('Could not determine city from your location');
+                            }
+                            
+                            // Zoom to current location
+                            map.setView([position.coords.latitude, position.coords.longitude], 13);
+                        } catch (error) {
+                            console.error('Geocoding error:', error);
+                            alert('Error determining your location');
+                        } finally {
+                            document.getElementById('locateBtn').disabled = false;
+                            document.getElementById('locateBtn').innerHTML = 
+                                '<i class="fas fa-location-arrow me-1"></i>Use My Location';
+                        }
+                    },
+                    (error) => {
+                        alert(`Error getting location: ${error.message}`);
+                        document.getElementById('locateBtn').disabled = false;
+                        document.getElementById('locateBtn').innerHTML = 
+                            '<i class="fas fa-location-arrow me-1"></i>Use My Location';
+                    }
+                );
+            } else {
+                alert('Geolocation is not supported by your browser');
+            }
+        });
+        
+        // Reset map view
+        document.getElementById('resetMapBtn').addEventListener('click', () => {
+            if (markers.length > 0) {
+                const markerGroup = new L.featureGroup(markers);
+                map.fitBounds(markerGroup.getBounds().pad(0.1));
+            } else {
+                map.setView([20.5937, 78.9629], 5);
+            }
+        });
+        
+        // Initialize map when page loads
+        window.addEventListener('load', initMap);
+    </script>
+</body>
+</html>

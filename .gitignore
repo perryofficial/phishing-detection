@@ -1,0 +1,25 @@
+# created by virtualenv automatically
+Lib
+Scripts
+pyvenv.cfg
+share
+ML_Model/phishing_model_no2_rf.pkl.gz
+ML_Model/phishing_model_no3_rf.pkl.gz
+ML_Model/phishing_model_rf.pkl.gz
+__pycache__/url_processing.cpython-311.py
+
+
+
+#============================================
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.env
+venv/
+phisher/
+
+# Model files (optional if large)
+ML_Model/*.pkl.gz
+

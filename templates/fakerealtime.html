@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phishing Attack Detection</title>
+
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
+          integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+
+
+    <!-- Custom CSS -->
+    <style>
+        body {
+            background-color: #f8f9fa;
+            background-size: cover;
+            background-position: center;
+            transition: background-image 0.5s ease-in-out;
+            color: #343a40;
+            font-family: 'Arial', sans-serif;
+        }
+
+
+        /* Header Styling */
+        .newheader {
+            text-align: center;
+            color: #343a40;
+            margin-bottom: 20px;
+        }
+
+
+        .newheader h1 {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+
+
+        .navbar {
+            background-color: #343a40;
+        }
+
+
+        .navbar-brand {
+            color: #ffffff !important;
+        }
+
+
+        .navbar-brand:hover {
+            color: #adb5bd !important;
+        }
+
+
+        /* Output Container Styling */
+        #outputs {
+            background-color: #ffffff;
+            width: 100%;
+            height: 400px; /* Increased height */
+            text-align: start;
+            overflow-y: auto;
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+
+        /* Card Styling for Outputs */
+        .card {
+            margin: 10px 0;
+            border: none;
+            height: 100px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+        }
+
+
+        .card-body {
+            padding: 15px;
+        }
+
+
+        /* Phishing & Genuine Labels */
+        .badge-phishing {
+            background-color: #dc3545;
+            color: #ffffff;
+        }
+
+
+        .badge-genuine {
+            background-color: #28a745;
+            color: #ffffff;
+        }
+
+
+        /* Footer Styling */
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #6c757d;
+        }
+    </style>
+</head>
+
+
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">Phishing Detection</a>
+            <a class="navbar-brand" href="#">Real-time Detection</a>
+        </div>
+    </nav>
+
+
+    <div class="container my-5">
+        <!-- Header Section -->
+        <div class="newheader">
+            <h1>Real-time Phishing Detection</h1>
+        </div>
+
+
+        <!-- Display error messages (if any) -->
+        <div>{{ error_line }}</div>
+
+
+        <!-- Filter Drop-down Menu -->
+        <div class="row">
+            <div class="form-group col-10">
+                <!-- <label for="urlFilter">Filter URLs:</label> -->
+                <select id="urlFilter" class="form-control">
+                    <option value="all">All URLs</option>
+                    <option value="phishing">Phishing URLs</option>
+                    <option value="genuine">Genuine URLs</option>
+                </select>
+            </div>    
+            <!-- Button to generate report -->
+            <div class="form-group col-2">
+                <button id="generateReportBtn" class="btn btn-primary">Generate Report</button>
+            </div>
+        </div>
+
+        <!-- Output Section for displaying predictions -->
+        <div id="outputs" class="container">
+            Will display URL prediction here.
+        </div>
+    </div>
+
+
+    <!-- JavaScript -->
+    <script>
+        let filterOption = 'all';  // Default filter: show all URLs
+        let urlData = [];  // Array to hold data for URLs and their predictions
+
+
+        // Event listener for filter change
+        document.getElementById('urlFilter').addEventListener('change', function() {
+            filterOption = this.value;
+            filterURLs();  // Call function to filter the displayed URLs based on selected option
+        });
+
+
+        // EventSource for real-time updates
+        const eventSource = new EventSource('/phishstream');
+        eventSource.onmessage = (event) => {
+            const outputContainer = document.getElementById('outputs');
+            const newCard = document.createElement('div');
+            newCard.classList.add('card');
+            const cardBody = document.createElement('div');
+            cardBody.classList.add('card-body');
+
+
+            const msgText = event.data;
+            let badgeClass = '';
+            let badgeText = '';
+            let urlType = '';  // Store URL type ('phishing' or 'genuine')
+            let phishingChance = 0;
+            let genuineChance = 0;
+
+
+            // Extract the URL, phishing percentage, and genuine percentage from the message
+            const parts = msgText.split(" ");
+            const url = parts[3];
+            phishingChance = parseFloat(parts[7].replace("(", "").replace("%", ""));  // Extract phishing percentage
+            genuineChance = parseFloat(parts[11].replace("(", "").replace("%", ""));  // Extract genuine percentage
+
+
+            // Apply classes and labels based on message content
+            if (parts[2]=="phishing:") {
+                badgeClass = 'badge-phishing';
+                badgeText = 'Phishing URL Detected';
+                urlType = 'phishing';
+            } else if (parts[2]=="safe:") {
+                badgeClass = 'badge-genuine';
+                badgeText = 'Genuine URL Detected';
+                urlType = 'genuine';
+            }
+
+
+            cardBody.innerHTML = `
+                <h5><span class="badge ${badgeClass}">${badgeText}</span></h5>
+                <p>${msgText}</p>
+            `;
+
+
+            newCard.appendChild(cardBody);
+            newCard.setAttribute('data-type', urlType);  // Store URL type as a custom attribute
+            outputContainer.appendChild(newCard);
+
+
+            // Save URL data for report generation
+            urlData.push({
+                url: url,
+                nature: urlType,
+                phishingChance: phishingChance,
+                genuineChance: genuineChance
+            });
+
+
+            // Only scroll to the bottom if the user is at the bottom
+            scrollToBottomIfNeeded(outputContainer);
+
+
+            filterURLs();  // Apply the filter after every new URL is displayed
+        };
+
+
+        // Function to filter URLs based on selected option
+        function filterURLs() {
+            const cards = document.querySelectorAll('#outputs .card');
+            cards.forEach(card => {
+                const cardType = card.getAttribute('data-type');
+                if (filterOption === 'all') {
+                    card.style.display = 'block';  // Show all URLs
+                } else if (filterOption === 'phishing' && cardType === 'phishing') {
+                    card.style.display = 'block';  // Show phishing URLs
+                } else if (filterOption === 'genuine' && cardType === 'genuine') {
+                    card.style.display = 'block';  // Show genuine URLs
+                } else {
+                    card.style.display = 'none';  // Hide others
+                }
+            });
+        }
+
+
+        // Function to scroll to the bottom only if the user is at the bottom
+        function scrollToBottomIfNeeded(container) {
+            const isAtBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 1;
+            if (isAtBottom) {
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+
+
+    // Function to generate the report
+    document.getElementById('generateReportBtn').addEventListener('click', function() {
+        const currentDate = new Date();
+       
+        // Format date as 'Apr 2, 2025'
+        const formattedDate = currentDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+
+
+        // Format date for filename as 'Apr_02_2025_160300'
+        const month = currentDate.toLocaleString('en-US', { month: 'short' });
+        const day = String(currentDate.getDate()).padStart(2, '0');  // Ensures day is two digits
+        const year = currentDate.getFullYear();
+        const time = currentDate.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/:/g, '');  // Get time as HHmmss
+
+
+        // Create the filename with the formatted date and time
+        const filename = `detected_urls_report_${month}_${day}_${year}_${time}.csv`;
+
+
+        let csvContent = `Detected URLs Report: ${month} ${day} ${year}\n\n`;
+        csvContent += 'Index,URL,Predicted Nature,Phishing Chance,Genuine Chance\n';
+
+
+        urlData.forEach((entry, index) => {
+            csvContent += `${index + 1},${entry.url},${entry.nature},${entry.phishingChance}%,${entry.genuineChance}%\n`;
+        });
+
+
+        // Create a link to download the CSV
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        if (link.download !== undefined) {  // Feature detection
+            link.setAttribute('href', URL.createObjectURL(blob));
+            link.setAttribute('download', filename);  // Set filename with date and time
+            link.click();
+        }
+    });
+    </script>
+
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
+            integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
+            crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+            integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+            crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"
+            integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI"
+            crossorigin="anonymous"></script>
+</body>
+</html>
