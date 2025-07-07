@@ -6,3 +6,4 @@ UI includes two parts:
 2) Module to fetch URLs from an API and predict their nature. Also includes a feature for report generation.
 
 Various ML models were tested; the best-performing one was chosen to be loaded into the application. The Jupyter Notebook includes all the code from examining the dataset to testing the ML algorithms.
+https://phishing-detection-v2tr.onrender.com/
